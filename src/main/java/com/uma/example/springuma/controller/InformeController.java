@@ -21,6 +21,11 @@ public class InformeController {
     @Autowired
     private InformeService informeService;
 
+	@GetMapping("/index")
+	public String index() {
+		return "index";
+	}
+
     @GetMapping("/informe/{id}")
     public Informe getInforme(@PathVariable("id") Long id) {
         return informeService.getInforme(id);

@@ -59,7 +59,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
-          
+
   deploy-to-k8s:
     needs: build-and-publish # It will not start until the previous job has successfully completed.
     runs-on: self-hosted 
@@ -89,7 +89,7 @@ jobs:
           # Wait for the deployment to complete
           kubectl rollout status deployment/${{ vars.DEPLOYMENT_NAME }} \
             --namespace=${{ vars.NAMESPACE }} \
-            --timeout=30s
+            --timeout=120s
       
       - name: Verify deployment
         run: |

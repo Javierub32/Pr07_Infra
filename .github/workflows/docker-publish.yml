@@ -9,7 +9,7 @@ on:
 
 env:
   # Construcción dinámica: tu_usuario/nombre_del_repositorio
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/pr07_infra
 
 jobs:
   build-and-publish:
@@ -81,7 +81,7 @@ jobs:
         run: |
           # Update the deployment with the new image using abbreviated SHA
           kubectl set image deployment/${{ vars.DEPLOYMENT_NAME }} \
-            ${{ vars.DEPLOYMENT_NAME }}=${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7} \
+            ${{ vars.DEPLOYMENT_NAME }}=${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7} \
             --namespace=${{ vars.NAMESPACE }}
 
       - name: Wait for deployment rollout

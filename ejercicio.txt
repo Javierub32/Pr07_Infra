@@ -5,7 +5,7 @@ X. Hacemos el despliegue local en Kubernetes:
 kubectl create secret docker-registry mi-registro-secreto \
   --docker-server=https://index.docker.io/v1/ \
   --docker-username=javierub \
-  --docker-password=\
+  --docker-password=bBMltwYYoUEsdfsdf\
   --docker-email=javierub38@gmail.com \
   --namespace=ips
 

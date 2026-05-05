@@ -47,11 +47,15 @@ The content is organized as follows:
 .gitignore
 .mvn/wrapper/maven-wrapper.properties
 database.mv.db
+deployment.yaml
 Dockerfile
+ejercicio.txt
 mvnw
 mvnw.cmd
 pom.xml
 README.md
+runner-permissions.yml
+service.yaml
 src/main/java/com/uma/example/springuma/controller/ImagenController.java
 src/main/java/com/uma/example/springuma/controller/InformeController.java
 src/main/java/com/uma/example/springuma/controller/MedicoController.java
@@ -73,6 +77,7 @@ src/main/java/com/uma/example/springuma/ServletInitializer.java
 src/main/java/com/uma/example/springuma/SpringumaApplication.java
 src/main/java/com/uma/example/springuma/utils/ImageUtils.java
 src/main/resources/application.properties
+src/main/resources/templates/index.html
 src/test/java/com/uma/example/springuma/integration/base/AbstractIntegration.java
 src/test/java/com/uma/example/springuma/integration/ImagenControllerWebTestClientIT.java
 src/test/java/com/uma/example/springuma/integration/InformeControllerWebTestClientIT.java
@@ -177,6 +182,32 @@ buildNumber.properties
 wrapperVersion=3.3.4
 distributionType=only-script
 distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.11/apache-maven-3.9.11-bin.zip
+</file>
+
+<file path="deployment.yaml">
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-app
+  namespace: ips
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mi-app
+  template:
+    metadata:
+      labels:
+        app: mi-app
+    spec:
+      imagePullSecrets:
+        - name: mi-registro-secreto
+      containers:
+      - name: backend-app
+        image: javierub/pr07_infra:latest 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
 </file>
 
 <file path="Dockerfile">
@@ -830,6 +861,37 @@ The workflow in `.github/workflows/ci.yml` triggers on every **push** and **pull
 - Maven · GitHub Actions
 </file>
 
+<file path="runner-permissions.yml">
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ips
+  name: gha-runner-role
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+</file>
+
+<file path="service.yaml">
+apiVersion: v1
+kind: Service
+metadata:
+  name: mi-app-service
+  namespace: ips
+spec:
+  type: NodePort
+  selector:
+    app: mi-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      nodePort: 30007
+</file>
+
 <file path="src/main/java/com/uma/example/springuma/controller/ImagenController.java">
 package com.uma.example.springuma.controller;
 
@@ -903,64 +965,6 @@ public class ImagenController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error al eliminar la imagen");
-        }
-    }
-}
-</file>
-
-<file path="src/main/java/com/uma/example/springuma/controller/InformeController.java">
-package com.uma.example.springuma.controller;
-
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.uma.example.springuma.model.Informe;
-import com.uma.example.springuma.model.InformeService;
-
-@RestController
-public class InformeController {
-
-    @Autowired
-    private InformeService informeService;
-
-    @GetMapping("/informe/{id}")
-    public Informe getInforme(@PathVariable("id") Long id) {
-        return informeService.getInforme(id);
-    }
-
-    @GetMapping("informe/imagen/{id}")
-    public List<Informe> getInformes(@PathVariable("id") Long id) {
-        return informeService.getInformesImagen(id);
-    }
-
-    @PostMapping(value = "/informe", consumes = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<?> saveInforme(@RequestBody Informe informe) {
-        try {
-            informeService.addInforme(informe);
-            return ResponseEntity.status(201).build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("El informe ya existe");
-        }
-    }
-
-    @DeleteMapping("/informe/{id}")
-    public ResponseEntity<?> deleteInforme(@PathVariable("id") Long id) {
-        try {
-            informeService.removeInformeByID(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al eliminar el informe");
         }
     }
 }
@@ -2066,6 +2070,20 @@ spring.http.multipart.max-file-size=10MB
 spring.http.multipart.max-request-size=11MB
 </file>
 
+<file path="src/main/resources/templates/index.html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+</head>
+<body>
+	Hola Mundo!
+</body>
+</html>
+</file>
+
 <file path="src/test/java/com/uma/example/springuma/integration/base/AbstractIntegration.java">
 package com.uma.example.springuma.integration.base;
 
@@ -2644,79 +2662,6 @@ spring.http.multipart.max-file-size=10MB
 spring.http.multipart.max-request-size=11MB
 </file>
 
-<file path=".github/badges/branches.svg">
-<svg xmlns="http://www.w3.org/2000/svg" width="106" height="20" role="img" aria-label="branches: 19.5%"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="106" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="61" height="20" fill="#555"/><rect x="61" width="45" height="20" fill="#e05d44"/><rect width="106" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="315" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="507">branches</text><text x="315" y="140" transform="scale(.1)" fill="#fff" textLength="507">branches</text><text aria-hidden="true" x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="350">19.5%</text><text x="825" y="140" transform="scale(.1)" fill="#fff" textLength="350">19.5%</text></g></svg>
-</file>
-
-<file path=".github/badges/jacoco.svg">
-<svg xmlns="http://www.w3.org/2000/svg" width="106" height="20" role="img" aria-label="coverage: 52.7%"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="106" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="61" height="20" fill="#555"/><rect x="61" width="45" height="20" fill="#e05d44"/><rect width="106" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="315" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="510">coverage</text><text x="315" y="140" transform="scale(.1)" fill="#fff" textLength="510">coverage</text><text aria-hidden="true" x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="350">52.7%</text><text x="825" y="140" transform="scale(.1)" fill="#fff" textLength="350">52.7%</text></g></svg>
-</file>
-
-<file path=".github/workflows/docker-publish.yml">
-name: Docker Build & Push on Github
-
-on:
-  push:
-    branches: [ "main", "master" ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "main", "master" ]
-
-env:
-  # Construcción dinámica: tu_usuario/nombre_del_repositorio
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
-
-jobs:
-  build-and-publish:
-    runs-on: ubuntu-latest 
-    
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log into registry ${{ vars.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ vars.REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-          retrying-max-attempts: 3
-</file>
-
 <file path="pom.xml">
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -2832,6 +2777,284 @@ jobs:
         </plugins>
     </build>
 </project>
+</file>
+
+<file path="src/main/java/com/uma/example/springuma/controller/InformeController.java">
+package com.uma.example.springuma.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.uma.example.springuma.model.Informe;
+import com.uma.example.springuma.model.InformeService;
+
+@RestController
+public class InformeController {
+
+    @Autowired
+    private InformeService informeService;
+
+	@GetMapping("/index")
+	public String index() {
+		return "index";
+	}
+
+    @GetMapping("/informe/{id}")
+    public Informe getInforme(@PathVariable("id") Long id) {
+        return informeService.getInforme(id);
+    }
+
+    @GetMapping("informe/imagen/{id}")
+    public List<Informe> getInformes(@PathVariable("id") Long id) {
+        return informeService.getInformesImagen(id);
+    }
+
+    @PostMapping(value = "/informe", consumes = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<?> saveInforme(@RequestBody Informe informe) {
+        try {
+            informeService.addInforme(informe);
+            return ResponseEntity.status(201).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("El informe ya existe");
+        }
+    }
+
+    @DeleteMapping("/informe/{id}")
+    public ResponseEntity<?> deleteInforme(@PathVariable("id") Long id) {
+        try {
+            informeService.removeInformeByID(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error al eliminar el informe");
+        }
+    }
+}
+</file>
+
+<file path=".github/badges/branches.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="106" height="20" role="img" aria-label="branches: 17.3%"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="106" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="61" height="20" fill="#555"/><rect x="61" width="45" height="20" fill="#e05d44"/><rect width="106" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="315" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="507">branches</text><text x="315" y="140" transform="scale(.1)" fill="#fff" textLength="507">branches</text><text aria-hidden="true" x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="350">17.3%</text><text x="825" y="140" transform="scale(.1)" fill="#fff" textLength="350">17.3%</text></g></svg>
+</file>
+
+<file path=".github/badges/jacoco.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="106" height="20" role="img" aria-label="coverage: 52.3%"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="106" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="61" height="20" fill="#555"/><rect x="61" width="45" height="20" fill="#e05d44"/><rect width="106" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="315" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="510">coverage</text><text x="315" y="140" transform="scale(.1)" fill="#fff" textLength="510">coverage</text><text aria-hidden="true" x="825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="350">52.3%</text><text x="825" y="140" transform="scale(.1)" fill="#fff" textLength="350">52.3%</text></g></svg>
+</file>
+
+<file path=".github/workflows/docker-publish.yml">
+name: Docker Build & Push on Github
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+env:
+  # Construcción dinámica: tu_usuario/nombre_del_repositorio
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest 
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into registry ${{ vars.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          
+  deploy-to-k8s:
+    needs: build-and-publish # It will not start until the previous job has successfully completed.
+    runs-on: self-hosted 
+    
+    steps:
+      - name: Code checkout (Manifiesto K8s)
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        run: |
+          # Install kubectl if not already available
+          if ! command -v kubectl &> /dev/null; then
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+          fi
+
+      - name: Update deployment image
+        run: |
+          # Update the deployment with the new image using abbreviated SHA
+          kubectl set image deployment/${{ vars.DEPLOYMENT_NAME }} \
+            ${{ vars.DEPLOYMENT_NAME }}=${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7} \
+            --namespace=${{ vars.NAMESPACE }}
+
+      - name: Wait for deployment rollout
+        run: |
+          # Wait for the deployment to complete
+          kubectl rollout status deployment/${{ vars.DEPLOYMENT_NAME }} \
+            --namespace=${{ vars.NAMESPACE }} \
+            --timeout=30s
+      
+      - name: Verify deployment
+        run: |
+          # Get deployment status
+          kubectl get deployment ${{ vars.DEPLOYMENT_NAME }} --namespace=${{ vars.NAMESPACE }}
+          
+          # Get pod status
+          kubectl get pods -l name=pod-${{ vars.DEPLOYMENT_NAME }} --namespace=${{ vars.NAMESPACE }}
+          
+          # Show recent events
+          kubectl get events --namespace=${{ vars.NAMESPACE }} --sort-by='.lastTimestamp' | tail -10
+</file>
+
+<file path="ejercicio.txt">
+X. Hacemos el despliegue local en Kubernetes:
+
+1. Creamos el secret para el acceso a DockerHub:
+
+kubectl create secret docker-registry mi-registro-secreto \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-username=javierub \
+  --docker-password=\
+  --docker-email=javierub38@gmail.com \
+  --namespace=ips
+
+2. Creamos el deployment:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-app
+  namespace: ips
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mi-app
+  template:
+    metadata:
+      labels:
+        app: mi-app
+    spec:
+      imagePullSecrets:
+        - name: mi-registro-secreto
+      containers:
+      - name: backend-app
+        image: javierub/pr07_infra:latest 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+
+3. Creamos el servicio:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mi-app-service
+  namespace: ips
+spec:
+  type: NodePort
+  selector:
+    app: mi-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      nodePort: 30007
+
+4. Aplicamos los yaml:
+	kubectl apply -f deployment.yaml
+	kubectl apply -f service.yaml
+
+5. Creamos el Token de GitHub para el runner:
+   token: ksdhjgjsdhgbdjsg
+
+6. Instalamos Helm en el namespace: 
+	NAMESPACE="ips"
+	helm install arc \
+		--namespace "${NAMESPACE}" \
+		--create-namespace \
+		oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+
+7. Creamos el RunnerSet:
+	# 1. Definir variables (Estilo PowerShell)
+	$INSTALLATION_NAME = "self-hosted"
+	$NAMESPACE = "ips"
+	$GITHUB_CONFIG_URL = "https://github.com/Javierub32/Pr07_Infra"
+	$GITHUB_PAT = "ksdhjgjsdhgbdjsg"
+
+	# 2. Ejecutar Helm (Usando ` para multilínea)
+	helm install $INSTALLATION_NAME `
+	--namespace $NAMESPACE `
+	--create-namespace `
+	--set githubConfigUrl=$GITHUB_CONFIG_URL `
+	--set githubConfigSecret.github_token=$GITHUB_PAT `
+	oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+
+
+8. Aplicamos el siguiente yaml para darle permisos al runner:
+	apiVersion: rbac.authorization.k8s.io/v1
+	kind: Role
+	metadata:
+	namespace: ips
+	name: gha-runner-role
+	rules:
+	- apiGroups: ["apps"]
+		resources: ["deployments", "replicasets"]
+		verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+	- apiGroups: [""]
+		resources: ["pods", "services"]
+		verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+	kubectl apply -f runner-permissions.yml
 </file>
 
 </files>
